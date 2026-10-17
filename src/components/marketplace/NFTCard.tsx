@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Heart } from 'lucide-react';
 import type { NFT } from '../../types';
 
-export function NFTCard({ nft }: { nft: NFT }) {
+export function NFTCard({ nft, priority }: { nft: NFT; priority?: boolean }) {
   const [isFavorite, setIsFavorite] = useState(false);
+  const shouldLoadEagerly = priority ?? nft.id === '1';
 
   return (
     <div className="group relative block min-w-0">
@@ -19,8 +20,8 @@ export function NFTCard({ nft }: { nft: NFT }) {
             alt={nft.name}
             width={1254}
             height={1254}
-            loading={nft.id === '1' ? 'eager' : 'lazy'}
-            fetchPriority={nft.id === '1' ? 'high' : 'auto'}
+            loading={shouldLoadEagerly ? 'eager' : 'lazy'}
+            fetchPriority={shouldLoadEagerly && nft.id === '1' ? 'high' : 'auto'}
               className="aspect-square w-full rounded-[13px] object-cover transition-transform duration-300 group-hover:scale-[0.985] lg:rounded-[10px]"
           />
           </div>

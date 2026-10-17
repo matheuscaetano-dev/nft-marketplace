@@ -357,14 +357,14 @@ function CatalogPage() {
             <>
               <div className="grid grid-cols-2 items-start gap-x-4 lg:hidden">
                 <div className="flex min-w-0 flex-col gap-y-6">
-                  {mobileLeftColumn.map((nft) => <NFTCard key={nft.id} nft={nft} />)}
+                  {mobileLeftColumn.map((nft, index) => <NFTCard key={nft.id} nft={nft} priority={index === 0} />)}
                 </div>
                 <div className="flex min-w-0 flex-col gap-y-6 pt-8">
-                  {mobileRightColumn.map((nft) => <NFTCard key={nft.id} nft={nft} />)}
+                  {mobileRightColumn.map((nft, index) => <NFTCard key={nft.id} nft={nft} priority={index === 0} />)}
                 </div>
               </div>
               <div className="hidden grid-cols-2 gap-x-5 gap-y-8 lg:grid xl:grid-cols-3">
-                {nfts.map((nft) => <NFTCard key={nft.id} nft={nft} />)}
+                {nfts.map((nft, index) => <NFTCard key={nft.id} nft={nft} priority={index < 3} />)}
               </div>
             </>
           )}
