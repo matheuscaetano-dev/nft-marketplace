@@ -3,6 +3,8 @@ import type { FormEvent } from 'react';
 import { Eye, EyeOff, X } from 'lucide-react';
 import { FaFacebookF } from 'react-icons/fa';
 import { FcGoogle } from 'react-icons/fc';
+import { isApiError } from '../../api/client';
+import { useLogin, useRegister } from '../../api/session';
 
 type AuthMode = 'login' | 'register';
 
@@ -14,6 +16,8 @@ interface AuthModalProps {
 const fieldClass = 'h-[50px] w-full rounded-[10px] border border-[#3F2319] bg-[#140D0A] px-4 py-3 text-[11px] text-[#F5F1EB] outline-none placeholder:text-[#9b7955] focus:border-[#D28A4C] sm:h-[40px] sm:rounded-[5px] sm:border-[#3F2319] sm:bg-transparent sm:px-4';
 
 export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
+  const login = useLogin();
+  const register = useRegister();
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -22,6 +26,7 @@ export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [message, setMessage] = useState('');
+  const [pending, setPending] = useState(false);
   const dialogRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -65,17 +70,37 @@ export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
     setMessage('');
   };
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage('');
 
+    if (pending) return;
     if (mode === 'register' && password !== confirmPassword) {
       setMessage('As senhas não coincidem.');
       return;
     }
 
-    const fallbackName = email.split('@')[0] || 'Colecionador';
-    onAuthenticated(mode === 'register' ? username.trim() : fallbackName);
+    setPending(true);
+    try {
+      if (mode === 'register') {
+        const response = await register({
+          email,
+          password,
+          username: username.trim(),
+          displayName: username.trim(),
+        });
+        onAuthenticated(response.user.displayName);
+      } else {
+        const session = await login({ email, password });
+        onAuthenticated(session.user.displayName);
+      }
+    } catch (cause) {
+      setMessage(isApiError(cause) ? cause.message : 'Não foi possível concluir. Tente novamente.');
+    } finally {
+      setPending(false);
+      setPassword('');
+      setConfirmPassword('');
+    }
   };
 
   const socialSignIn = (provider: string) => {
@@ -84,7 +109,7 @@ export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/65 p-0 sm:p-1"
+      className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/35 p-0 sm:p-1"
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <section
@@ -92,7 +117,7 @@ export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
         role="dialog"
         aria-modal="true"
         aria-label={mode === 'login' ? 'Entrar' : 'Criar perfil de colecionador'}
-        className="relative my-auto flex min-h-[100dvh] w-full max-w-none flex-col rounded-[32px] bg-[#140D0A] px-7 pb-5 pt-[15vh] text-[#F5F1EB] shadow-2xl sm:my-0 sm:min-h-0 sm:w-full sm:max-w-[540px] sm:rounded-none sm:bg-[#241612] sm:px-9 sm:pb-7 sm:pt-[52px]"
+        className="relative my-auto flex min-h-[100dvh] w-full max-w-none flex-col rounded-[32px] bg-[#140D0A] px-7 pb-5 pt-[15vh] text-[#F5F1EB] shadow-2xl sm:my-0 sm:min-h-0 sm:w-full sm:max-w-[468px] sm:rounded-[4px] sm:border-b-4 sm:border-b-[#D28A4C] sm:bg-[#241612] sm:px-[50px] sm:pb-6 sm:pt-[48px]"
       >
         <button
           type="button"
@@ -103,7 +128,7 @@ export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
           <X aria-hidden="true" size={15} />
         </button>
 
-        <div className="mb-[44px] hidden justify-center gap-1 text-[20px] leading-5 sm:flex">
+        <div className="mb-[40px] hidden justify-center gap-1 text-[20px] leading-5 sm:flex">
           <button type="button" onClick={() => switchMode('login')} className={mode === 'login' ? 'font-bold text-[#D28A4C]' : 'text-[#F5F1EB] hover:text-[#D28A4C]'}>
             Entrar
           </button>
@@ -129,12 +154,15 @@ export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
             : 'Crie seu perfil de colecionador e conecte uma carteira quando quiser.'}
         </p>
 
-        <form onSubmit={submit} className="mx-auto w-full space-y-3 sm:max-w-[340px]">
+        <form onSubmit={submit} className="mx-auto w-full space-y-3 sm:max-w-[368px]">
           {mode === 'register' && (
             <input
               aria-label="Nome de usuário"
               autoComplete="username"
               required
+              minLength={3}
+              maxLength={24}
+              pattern="[a-zA-Z0-9_-]+"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
               placeholder="Nome de usuário"
@@ -148,7 +176,7 @@ export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="contato@email.com"
+            placeholder={mode === 'register' ? 'Digite seu e-mail' : 'contato@email.com'}
             className={fieldClass}
           />
           <PasswordField
@@ -178,24 +206,24 @@ export function AuthModal({ onClose, onAuthenticated }: AuthModalProps) {
             </div>
           )}
 
-          <button type="submit" className="!mt-[40px] h-[60px] w-full rounded-[10px] bg-[#D28A4C] text-[14px] font-bold text-[#17100b] transition-colors hover:bg-[#e19b5f] sm:!mt-6 sm:h-[48px] sm:rounded-[5px] sm:text-[16px]">
-            <span className="sm:hidden">{mode === 'login' ? 'Entrar' : 'Criar perfil'}</span>
-            <span className="hidden sm:inline">{mode === 'login' ? 'Entrar' : 'Criar conta'}</span>
+          <button type="submit" disabled={pending} className="!mt-[40px] h-[60px] w-full rounded-[10px] bg-[#D28A4C] text-[14px] font-bold text-[#17100b] transition-colors hover:bg-[#e19b5f] disabled:cursor-wait disabled:opacity-60 sm:!mt-6 sm:h-[48px] sm:rounded-[5px] sm:text-[16px]">
+            <span className="sm:hidden">{pending ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar perfil'}</span>
+            <span className="hidden sm:inline">{pending ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta'}</span>
           </button>
         </form>
 
-        <div className="mx-auto mt-10 mb-3 flex w-full items-center gap-3 text-[9px] text-[#d7c7b4] sm:mt-6 sm:mb-3 sm:max-w-[340px] sm:text-[14px]">
+        <div className="mx-auto mt-10 mb-3 flex w-full items-center gap-3 text-[9px] text-[#d7c7b4] sm:mt-6 sm:mb-3 sm:max-w-[368px] sm:text-[14px]">
           <span className="h-px flex-1 bg-[#402813]" />
           Ou continue com
           <span className="h-px flex-1 bg-[#402813]" />
         </div>
 
-        <div className="mx-auto w-full space-y-3 sm:max-w-[340px] sm:space-y-3">
-          <button type="button" onClick={() => socialSignIn('Google')} className="flex h-[40px] w-full items-center justify-center gap-2 rounded-[10px] border border-[#3F2319] text-[10px] text-[#d7c7b4] hover:border-[#D28A4C] sm:h-[44px] sm:rounded-[5px] sm:text-[14px]">
+        <div className="mx-auto w-full space-y-3 sm:max-w-[368px] sm:space-y-3">
+          <button type="button" disabled={pending} onClick={() => socialSignIn('Google')} className="flex h-[40px] w-full items-center justify-center gap-2 rounded-[10px] border border-[#3F2319] text-[10px] text-[#d7c7b4] hover:border-[#D28A4C] disabled:opacity-60 sm:h-[44px] sm:rounded-[5px] sm:text-[14px]">
             <FcGoogle aria-hidden="true" size={16} />
             Continuar com Google
           </button>
-          <button type="button" onClick={() => socialSignIn('Facebook')} className="flex h-[40px] w-full items-center justify-center gap-2 rounded-[10px] border border-[#3F2319] text-[10px] text-[#d7c7b4] hover:border-[#D28A4C] sm:h-[44px] sm:rounded-[5px] sm:text-[14px]">
+          <button type="button" disabled={pending} onClick={() => socialSignIn('Facebook')} className="flex h-[40px] w-full items-center justify-center gap-2 rounded-[10px] border border-[#3F2319] text-[10px] text-[#d7c7b4] hover:border-[#D28A4C] disabled:opacity-60 sm:h-[44px] sm:rounded-[5px] sm:text-[14px]">
             <FaFacebookF aria-hidden="true" size={13} className="text-[#1877F2]" />
             Continuar com Facebook
           </button>
@@ -235,7 +263,7 @@ function PasswordField({
         type={visible ? 'text' : 'password'}
         autoComplete={autoComplete}
         required
-        minLength={6}
+        minLength={8}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={label}

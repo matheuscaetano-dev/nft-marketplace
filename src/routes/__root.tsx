@@ -4,6 +4,7 @@ import { Heart, Home, LogIn, LogOut, ScanLine, Search, ShoppingCart, UserRound }
 import { FaFacebookF, FaInstagram, FaLinkedinIn, FaYoutube } from 'react-icons/fa';
 import { FaTwitter } from 'react-icons/fa6';
 import { CartProvider, useCart } from '../components/marketplace/CartProvider';
+import { AuthDialogProvider, useAuthDialog } from '../components/marketplace/AuthDialogProvider';
 import { useLogout, useSession } from '../api/session';
 import { isApiError } from '../api/client';
 
@@ -23,14 +24,16 @@ type HeaderSection = 'home' | 'market';
 function RootLayout() {
   return (
     <CartProvider>
-      <MarketplaceLayout />
+      <AuthDialogProvider>
+        <MarketplaceLayout />
+      </AuthDialogProvider>
     </CartProvider>
   );
 }
 
 function MarketplaceLayout() {
   const [logoutError, setLogoutError] = useState('');
-  const navigate = useNavigate();
+  const openLogin = useAuthDialog();
   const session = useSession();
   const logout = useLogout();
   const currentUser = session.session?.user.displayName ?? '';
@@ -40,6 +43,7 @@ function MarketplaceLayout() {
   const isNFTDetails = pathname.startsWith('/nft/');
   const isCart = pathname === '/cart';
   const isPayment = pathname === '/payment';
+  const isOrderPage = pathname.startsWith('/order/');
   const isAccountPage = pathname === '/profile' || pathname === '/wallets';
   const isMobileStandalonePage = isNFTDetails || isCart || isPayment;
   const { items } = useCart();
@@ -47,9 +51,6 @@ function MarketplaceLayout() {
   const activeSection: HeaderSection = /^\/(market|mercado|nft|cart|payment)(\/|$)/i.test(pathname)
     ? 'market'
     : 'home';
-  const openLogin = () => {
-    void navigate({ to: '/login' });
-  };
   const toggleSession = () => {
     if (session.status === 'authenticated') {
       setLogoutError('');
@@ -62,8 +63,8 @@ function MarketplaceLayout() {
   };
 
   return (
-    <div className={`min-h-screen ${isCart || isPayment ? 'bg-[#140D0A] lg:bg-[#0f0a06]' : 'bg-[#0f0a06]'} font-mono text-zinc-100`}>
-      <header className="hidden border-b border-orange-900/30 lg:block">
+    <div className={`min-h-screen ${isOrderPage ? 'bg-[#140D0A]' : isCart || isPayment ? 'bg-[#140D0A] lg:bg-[#0f0a06]' : 'bg-[#0f0a06]'} font-mono text-zinc-100`}>
+      <header className={isOrderPage ? 'hidden' : 'hidden border-b border-orange-900/30 lg:block'}>
         <HeaderRow
           active={activeSection}
           badgeCount={badgeCount}
@@ -73,7 +74,7 @@ function MarketplaceLayout() {
         />
       </header>
 
-      <main className={`mx-auto max-w-7xl px-6 ${isAccountPage ? 'pb-16 pt-8 lg:py-6' : isMobileStandalonePage ? 'pb-0 pt-8 lg:py-12' : 'pb-36 pt-8 lg:py-12'}`}>
+      <main className={isOrderPage ? 'flex min-h-screen w-full items-center justify-center px-4 py-8' : `mx-auto max-w-7xl px-6 ${isAccountPage ? 'pb-16 pt-8 lg:py-6' : isMobileStandalonePage ? 'pb-0 pt-8 lg:py-12' : 'pb-36 pt-8 lg:py-12'}`}>
         {logoutError && <p role="alert" className="mb-4 text-sm text-red-300">{logoutError}</p>}
         <Outlet />
       </main>
@@ -82,11 +83,11 @@ function MarketplaceLayout() {
         badgeCount={badgeCount}
         currentUser={currentUser}
         currentPath={pathname}
-        hidden={isMobileStandalonePage || isAccountPage}
+        hidden={isMobileStandalonePage || isAccountPage || isOrderPage}
         onOpenAuth={openLogin}
         onAccountClick={toggleSession}
       />
-      <div className={isAccountPage ? 'hidden' : isMobileStandalonePage ? 'hidden lg:block' : undefined}>
+      <div className={isOrderPage || isAccountPage ? 'hidden' : isMobileStandalonePage ? 'hidden lg:block' : 'pb-[126px] lg:pb-0'}>
         <Footer />
       </div>
     </div>
@@ -342,7 +343,7 @@ function Footer() {
             </nav>
           ))}
 
-          <div>
+          <div className="col-span-2 min-w-0 sm:col-span-1 lg:col-span-1">
             <h2 className="mb-3 text-[14px] font-bold leading-[18px]">Redes sociais</h2>
             <ul aria-label="Redes sociais" className="flex max-w-full flex-wrap gap-2">
               {socialLinks.map((social) => (
@@ -355,8 +356,8 @@ function Footer() {
             </ul>
 
             <h2 className="mb-2 mt-6 text-[14px] font-bold leading-[18px]">Carteiras compatíveis</h2>
-            <div className="flex h-[28px] w-full max-w-[245px] items-center justify-center whitespace-nowrap rounded-[6px] border border-[#694629] bg-[#402813] px-2 text-[9px] font-semibold uppercase tracking-[0.02em] text-[#D28A4C]">
-              <span>MetaMask&nbsp; · &nbsp;WalletConnect&nbsp; · &nbsp;Coinbase</span>
+            <div className="flex min-h-[28px] w-full max-w-[245px] min-w-0 flex-wrap items-center justify-center rounded-[6px] border border-[#694629] bg-[#402813] px-2 py-1 text-center text-[9px] font-semibold uppercase leading-[14px] tracking-[0.02em] text-[#D28A4C]">
+              <span>MetaMask · WalletConnect · Coinbase</span>
             </div>
           </div>
         </div>

@@ -218,6 +218,7 @@ export function resolvePendingOrder(
         if (!current) throw new Error('Pending order NFT disappeared during confirmation.');
         return {
           nftId: line.nftId,
+          tokenId: current.nft.tokenId,
           editionId: line.editionId,
           name: current.nft.name,
           imageUrl: current.nft.imageUrl,
@@ -770,6 +771,7 @@ export const resourceHandlers = [
         if (!current) throw new Error('Quoted NFT disappeared during atomic order creation.');
         return {
           nftId: line.nftId,
+          tokenId: current.nft.tokenId,
           editionId: line.editionId,
           name: current.nft.name,
           imageUrl: current.nft.imageUrl,

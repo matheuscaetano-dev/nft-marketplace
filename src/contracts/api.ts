@@ -140,6 +140,7 @@ export interface OrderCreateRequest {
 
 export interface ReceiptItemSnapshot {
   nftId: string;
+  tokenId?: string;
   editionId: string;
   name: string;
   imageUrl: string;

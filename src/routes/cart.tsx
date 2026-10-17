@@ -3,6 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
 import { ChevronLeft, Minus, Plus, Trash2 } from 'lucide-react';
 import { useNftList } from '../api/hooks';
+import { useAuthDialog } from '../components/marketplace/AuthDialogProvider';
 import { NFTCard } from '../components/marketplace/NFTCard';
 import { useCart } from '../components/marketplace/CartProvider';
 import { formatEth } from '../lib/money';
@@ -14,6 +15,7 @@ export const Route = createFileRoute('/cart')({
 });
 
 function CartPage() {
+  const openAuth = useAuthDialog();
   const {
     items,
     promoCode,
@@ -204,7 +206,7 @@ function CartPage() {
             </div>
 
             {items.length && !isAuthenticated ? (
-              <Link to="/login" search={{ redirect: '/cart' }} className="flex h-[34px] w-full items-center justify-center rounded-[4px] bg-[#D28A4C] text-[11px] font-bold text-[#17100b]">Entrar para ver cotação e finalizar</Link>
+              <button type="button" onClick={openAuth} className="flex h-[34px] w-full items-center justify-center rounded-[4px] bg-[#D28A4C] text-[11px] font-bold text-[#17100b]">Entrar para ver cotação e finalizar</button>
             ) : items.length ? (
               <Link to="/payment" className="flex h-[34px] w-full items-center justify-center rounded-[4px] bg-[#D28A4C] text-[11px] font-bold text-[#17100b] transition-colors hover:bg-[#e19b5f]">
                 Conectar e finalizar
@@ -240,7 +242,7 @@ function CartPage() {
           </div>
 
           {items.length && !isAuthenticated ? (
-            <Link to="/login" search={{ redirect: '/cart' }} className="mt-5 flex h-[50px] w-full items-center justify-center rounded-full bg-[#D28A4C] text-[13px] font-bold text-[#17100b]">Entrar para ver cotação e finalizar</Link>
+            <button type="button" onClick={openAuth} className="mt-5 flex h-[50px] w-full items-center justify-center rounded-full bg-[#D28A4C] text-[13px] font-bold text-[#17100b]">Entrar para ver cotação e finalizar</button>
           ) : items.length ? (
             <Link to="/payment" className="mt-5 flex h-[50px] w-full items-center justify-center rounded-full bg-[#D28A4C] text-[13px] font-bold text-[#17100b] transition-colors hover:bg-[#e19b5f]">
               Conectar e finalizar

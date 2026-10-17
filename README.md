@@ -105,9 +105,6 @@ Diferenças conhecidas:
 
 - **Mobile e tablet:** os frames mobile foram seguidos onde existiam, mas com menos
   refinamento que o desktop.
-- **Login e cadastro:** receberam validação, mensagens de erro associadas aos campos,
-  estado de carregamento e prevenção de envio duplicado, o que causou
-  diferenças em relação ao frame original do figma.
 - **Espaçamentos e tipografia:** há pequenas diferenças de espaçamento, alinhamento e
   tamanho de fonte em algumas telas.
 - **Estados não desenhados** (skeleton, vazio, erro, validação, avisos de tempo real)
