@@ -1,0 +1,151 @@
+import emeraldApe from '../assets/nft-monkey-1.png';
+import goldenBeat from '../assets/nft-monkey-2.png';
+import sageNomad from '../assets/nft-monkey-3.png';
+import ivoryBaron from '../assets/nft-monkey-4.png';
+import type { NFT } from '../types';
+
+const featuredNFTs: NFT[] = [
+  {
+    id: '1',
+    tokenId: '0042',
+    name: 'Emerald Ape #042',
+    description: 'Um colecionável digital finalizado à mão da coleção Kurio Editions, verificado na Ethereum, com arte desbloqueável e acesso para colecionadores.',
+    priceEth: '1.19',
+    edition: '1/50',
+    availableQuantity: 10,
+    imageUrl: emeraldApe,
+    collection: 'Arte digital',
+    collectionName: 'Kurio Apes',
+    network: 'Ethereum',
+    attributes: ['Óculos', 'Esmeralda', 'Raro'],
+  },
+  {
+    id: '2',
+    name: 'Sage Nomad #009',
+    description: 'Uma peça única de um viajante digital.',
+    priceEth: '1.69',
+    edition: '1/10',
+    availableQuantity: 2,
+    imageUrl: sageNomad,
+    collection: 'Colecionáveis',
+    collectionName: 'Sage Nomads',
+    network: 'Polygon',
+    attributes: ['Chapéu de explorador', 'Violeta', 'Lendário'],
+  },
+  {
+    id: '3',
+    name: 'Neon Vessel #552',
+    description: 'Retrato de um colecionador da era digital.',
+    priceEth: '1.99',
+    edition: '1/50',
+    originalPriceEth: '2.29',
+    availableQuantity: 1,
+    imageUrl: ivoryBaron,
+    collection: 'Arte digital',
+    collectionName: 'Neon Vessels',
+    network: 'Ethereum',
+    attributes: ['Blazer marfim', 'Noturno', 'Raro'],
+  },
+  {
+    id: '4',
+    name: 'Cosmic Bloom #118',
+    description: 'Uma edição cósmica da coleção Sage Nomad.',
+    priceEth: '1.29',
+    edition: '1/10',
+    availableQuantity: 5,
+    imageUrl: sageNomad,
+    collection: 'Generativa',
+    collectionName: 'Kurio Generative',
+    network: 'Solana',
+    attributes: ['Cosmos', 'Violeta', 'Épico'],
+  },
+  {
+    id: '5',
+    tokenId: '0009',
+    name: 'Violet Nomad #314',
+    description: 'Um viajante de mundos imaginários.',
+    priceEth: '1.39',
+    edition: '1/1',
+    availableQuantity: 10,
+    imageUrl: sageNomad,
+    collection: 'Colecionáveis',
+    collectionName: 'Sage Nomads',
+    network: 'Polygon',
+    attributes: ['Moletom', 'Violeta', 'Incomum'],
+  },
+  {
+    id: '6',
+    tokenId: '9552',
+    name: 'Ivory Baron #088',
+    description: 'Retrato de um barão da coleção Kurio Editions.',
+    priceEth: '1.79',
+    edition: '1/10',
+    availableQuantity: 10,
+    imageUrl: ivoryBaron,
+    collection: 'Arte digital',
+    collectionName: 'Kurio Apes',
+    network: 'Ethereum',
+    attributes: ['Blazer marfim', 'Barão', 'Raro'],
+  },
+  {
+    id: '7',
+    name: 'Golden Beat #207',
+    description: 'Frequência sonora visualizada.',
+    priceEth: '0.99',
+    edition: '1/50',
+    availableQuantity: 10,
+    imageUrl: goldenBeat,
+    collection: 'Música',
+    collectionName: 'Golden Beats',
+    network: 'Ethereum',
+    attributes: ['Fones verdes', 'Dourado', 'Épico'],
+  },
+  {
+    id: '8',
+    name: 'Golden Chord #081',
+    description: 'Uma composição visual da coleção Golden.',
+    priceEth: '0.59',
+    edition: '1/50',
+    availableQuantity: 8,
+    imageUrl: goldenBeat,
+    collection: 'Música',
+    collectionName: 'Golden Beats',
+    network: 'Polygon',
+    attributes: ['Fones verdes', 'Dourado', 'Incomum'],
+  },
+  {
+    id: '9',
+    name: 'Golden Signal #160',
+    description: 'Uma edição limitada inspirada na música.',
+    priceEth: '0.39',
+    edition: '1/50',
+    availableQuantity: 4,
+    imageUrl: goldenBeat,
+    collection: 'Música',
+    collectionName: 'Golden Beats',
+    network: 'Solana',
+    attributes: ['Fones verdes', 'Sinal', 'Raro'],
+  },
+];
+
+const generatedNFTs: NFT[] = Array.from({ length: 18 }, (_, index) => {
+  const template = featuredNFTs[index % featuredNFTs.length];
+  const priceInCents = 35 + ((index * 37) % 210);
+  const networks = ['Ethereum', 'Polygon', 'Solana'] as const;
+  const collections = ['Arte digital', 'Colecionáveis', 'Música', 'Generativa'] as const;
+
+  return {
+    ...template,
+    id: String(index + 10),
+    tokenId: String(100 + index).padStart(4, '0'),
+    name: `${template.name.split('#')[0].trim()} Edition #${String(100 + index).padStart(3, '0')}`,
+    description: `Edição ${index + 1} da coleção ${template.collectionName ?? template.collection}.`,
+    priceEth: (priceInCents / 100).toFixed(2),
+    originalPriceEth: undefined,
+    availableQuantity: 1 + (index % 10),
+    collection: collections[index % collections.length],
+    network: networks[index % networks.length],
+  };
+});
+
+export const mockNFTs: NFT[] = [...featuredNFTs, ...generatedNFTs];
