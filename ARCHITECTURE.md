@@ -2,45 +2,57 @@
 
 ## Estrutura e responsabilidades
 
-- `src/contracts/api.ts` contém os contratos TypeScript compartilhados por transporte e handlers MSW.
-- `src/api/client.ts` é a única instância Axios; `src/api/resources.ts` implementa as funções REST tipadas e `src/api/hooks.ts` integra TanStack Query.
-- `src/api/session-store.ts` e `src/api/session.tsx` armazenam somente o token/identidade (nunca senha), restauram a sessão pelo endpoint e expõem hooks de login/cadastro/logout.
-- `src/api/keys.ts` centraliza query keys. Chaves privadas incluem sempre o `userId`; `clearQueryClient()` cancela queries em voo e limpa o cache.
-- `src/api/query-client.ts` concentra tempos, retry/backoff e políticas globais; consulte [docs/cache-policy.md](./docs/cache-policy.md).
-- `src/lib/money.ts` calcula valores de ETH com `decimal.js` (precisão interna de 80 dígitos); a API transporta strings decimais, não `number`.
-- `src/mocks/db/` é o banco em memória único dos handlers, restaurado de `localStorage` pela chave versionada `kurio-marketplace-mock-db-v1`. `resetDb()` repõe o seed determinístico completo; `resetDb('empty')` mantém usuários e dados de conta, mas limpa o catálogo.
-- `src/mocks/auth.ts`, `src/mocks/handlers.ts` e `src/mocks/resourceHandlers.ts` implementam autenticação e recursos REST sobre o banco comum.
-- `src/mocks/scenarios/` aplica atrasos, indisponibilidade e respostas de erro antes dos handlers de negócio. Não há lógica fictícia no cliente Axios nem nos componentes para completar essas respostas.
-- `docs/api-contracts.md` documenta endpoints e eventos; `docs/mock-scenarios.md` documenta seleção, reset, credenciais e reprodução dos cenários.
+- `src/routes/` contém as telas do catálogo, NFT, carrinho, pagamento, pedido/recibo, login/cadastro, perfil e carteiras; o TanStack Router divide telas por rota.
+- `src/contracts/api.ts` define os contratos compartilhados por cliente e mocks.
+- `src/api/client.ts` centraliza Axios, bearer token e tratamento de respostas 401; `resources.ts` implementa operações REST e `hooks.ts` integra recursos/mutations a TanStack Query.
+- `src/api/query-client.ts`, `keys.ts` e `realtime-socket.ts` centralizam ciclo de vida do cache, isolamento por usuário e aplicação de eventos realtime.
+- `src/api/session-store.ts`, `session-storage.ts`, `session-provider.tsx` e `session.tsx` controlam identidade, persistência, expiração e ações de sessão.
+- `src/mocks/db/` é o banco único consumido por handlers REST e realtime. `auth.ts`, `handlers.ts`, `resourceHandlers.ts`, `eventBus.ts` e `socket-io.ts` implementam autenticação, recursos e eventos; `scenarios/` injeta latência/falhas controladas.
+- `src/mocks/data.ts` e `src/assets/` fornecem fixtures do catálogo e imagens locais; `tests/` contém Vitest, Playwright e baselines visuais.
+- `src/lib/money.ts` usa `decimal.js` (precisão interna de 80 dígitos); ETH trafega como strings decimais.
 
-## Catálogo, busca e cache
+## Contratos REST e eventos
 
-O catálogo usa 27 fixtures, listadas por `GET /api/nfts` e detalhadas por `GET /api/nfts/:id`. A listagem aceita busca, coleção, rede, preço, ordenação, página e limite; filtra e pagina no handler REST. Os parâmetros da URL compõem a query key do TanStack Query no fluxo atual do catálogo.
+Os contratos REST, formatos de erro, autorização e endpoints estão em [docs/api-contracts.md](./docs/api-contracts.md). Em resumo: `/api/auth` trata sessão e contas; `/api/nfts` e `/api/favorites` atendem catálogo e favoritos; `/api/cart` e `/api/quotes` servem carrinho/cotação; `/api/orders` implementa criação idempotente e leitura do pedido; `/api/profile` e `/api/wallets` atualizam dados privados.
 
-O catálogo e detalhe NFT usam hooks compartilhados, query keys por parâmetros e `AbortSignal` repassado ao Axios. Consultas privadas incluem o `userId` e definem frescor zero; mutations invalidam os recursos dependentes ou atualizam cache. Favoritos são otimistas com rollback. Criação de pedido requer `OrderAttempt` com `Idempotency-Key` estável para permitir recuperação explícita de timeout. A política completa de retry, expiração e limpeza está em [docs/cache-policy.md](./docs/cache-policy.md).
+`nft.updated` transmite `eventId`, NFT/edição afetados, preço/disponibilidade e `version`. `order.updated` transmite `eventId`, pedido, status e versão. Contratos e exemplos estão em [docs/api-contracts.md](./docs/api-contracts.md); transporte mockado e limites em [docs/realtime.md](./docs/realtime.md).
 
-## Persistência, identidade e sessão simulada
+## Sessão, expiração e isolamento
 
-O banco MSW persiste sessões, contas, perfis, carteiras, favoritos, carrinhos, cotações e pedidos no `localStorage`, em esquema versionado. Dois usuários fictícios têm hashes SHA-256 com salt, nunca senhas em claro no estado; veja [docs/mock-scenarios.md](./docs/mock-scenarios.md) para credenciais. Tokens bearer expiram e podem ser invalidados pelo logout ou pelo cenário `session-expired`. `POST /__mocks/reset` restaura um seed conhecido.
+Login e cadastro guardam token/identidade (não senha) em armazenamento local para sobreviver ao refresh. A sessão é restaurada por `GET /api/auth/session`, expira no horário `expiresAt` e também é verificada pelos handlers. O provider agenda o fim da sessão; 401/logout invalidam a sessão. Logout, expiração e troca de usuário cancelam queries e limpam o QueryClient; o socket é desconectado e seus listeners removidos antes de mudar a identidade.
 
-Favoritos, carrinho autenticado, perfil, carteiras, cotação e pedido verificam autenticação. Carrinhos de visitante têm rotas próprias e podem ser mesclados no cadastro/login. O pedido valida cotação, estoque, carteira e rede; a chave `Idempotency-Key` é escopada ao usuário, recupera a mesma resposta em retries e conflita se o corpo mudar. Só pedidos confirmados baixam estoque e removem quantidades compradas; o recibo preserva o snapshot criado. O cenário de recusa mantém o carrinho e estoque.
+Toda chave de cache privado inclui `userId`. Handlers autenticados verificam propriedade de pedido, carteira, perfil e favoritos; dados privados não são reutilizados entre contas. A autenticação é demonstrativa: não é uma fronteira de segurança de servidor real.
 
-## Rede e cenários
+## Carrinho, pedidos e UX
 
-Todas as rotas de negócio são interceptadas por MSW. Axios permanece cliente HTTP; as respostas, o banco e as falhas ficam no limite MSW. `VITE_ENABLE_MOCKS=true` ativa o worker no build demo (`.env.demo`); o desenvolvimento também ativa o worker. Rotas não mockadas usam `onUnhandledRequest: 'bypass'` para permitir assets e recursos de desenvolvimento servidos pelo Vite.
+Visitantes usam um `visitorId` local e endpoints de carrinho de visitante; autenticar ou cadastrar mescla as linhas do visitante no carrinho da conta. Quantidades e disponibilidade são validadas pelo handler. Os dados mockados persistem no `localStorage` deste navegador.
 
-`VITE_MOCK_SCENARIO`, query string `scenario` e `setMockScenario()` selecionam cenários repetíveis. Respostas de latência variável percorrem tempos fixos, não `Math.random()`. A lista completa e instruções estão em [docs/mock-scenarios.md](./docs/mock-scenarios.md).
+A confirmação pede cotação atual e bloqueia alterações de preço/estoque até nova confirmação do resumo. `Idempotency-Key` permanece estável por tentativa: repetir a mesma chave e corpo recupera o mesmo pedido; corpo diferente conflita. Timeout recuperável consulta o pedido existente, sem criar outra compra. Recusa mantém carrinho e estoque; confirmação persiste snapshot imutável de recibo, baixa estoque e remove linhas compradas.
 
-## Integração visual, escopo e acessibilidade
+Decisões de UX incluem filtros refletidos na URL e histórico navegável, feedback de falhas próximo aos campos, rollback visual de favorito, aviso de preço/estoque alterados, confirmação explícita após mudança de cotação e recuperação de pedidos pendentes por REST/reconexão.
 
-As telas de catálogo, detalhe, carrinho, pagamento, pedido, login, cadastro, perfil e carteiras consomem os hooks de dados. O conteúdo de catálogo, preço, estoque, usuário, carteira e recibo vem das respostas da API simulada; opções de coleção/rede são derivadas do catálogo carregado e contagens sem suporte no contrato não são inventadas. O destaque lateral do catálogo usa um NFT retornado pela API. Avaliações não são exibidas como pontuação porque o recurso não fornece esses dados.
+## Cache, retries e sincronização
 
-As áreas editoriais e promocionais que estavam fora do escopo foram removidas da página inicial, evitando apresentar artigos, ofertas e quantidades fixas como recursos funcionais. O hero ilustrativo permanece como conteúdo visual, sem representar um item comprável. O único frame de edição disponível é apresentado sem opções de edição fictícias.
+As query keys do catálogo incluem parâmetros completos; detalhes usam ID. Listagem/detalhe têm frescor de 30 s, recursos privados/curta validade são revalidados imediatamente conforme a consulta. `AbortSignal` chega ao Axios. Queries repetem somente falhas de rede, 429 e 5xx (até duas tentativas com backoff); mutations não repetem automaticamente.
 
-Os ajustes de acessibilidade acrescentam rótulos associados aos campos, `aria-invalid`/`aria-describedby` para erros, foco no primeiro campo inválido, estados de mutation anunciados por `aria-live`, foco visível em ações e animações de skeleton desativadas com `prefers-reduced-motion`. Formulários evitam submissão duplicada e exibem erros de validação retornados pela API. Perfil, carteiras e recibo usam layouts fluidos em telas estreitas.
+Favoritos atualizam otimisticamente com rollback em erro. Outras mutations invalidam dados dependentes ou os substituem com respostas do servidor mockado. O socket é o único módulo que aplica `nft.updated`/`order.updated` ao cache e à notificação da UI: descarta `eventId` já visto e versões menores/iguais à versão aplicada; estado terminal do pedido não regride. Ao reconectar invalida queries ativas afetadas e reconcilia catálogo, detalhe, carrinho, cotação e pedido pendente pela REST. Política detalhada em [docs/cache-policy.md](./docs/cache-policy.md).
 
-## Limites desta entrega
+## Mocks e limites do transporte
 
-Esta entrega integra os fluxos de conta e compra às telas e hooks REST simulados, incluindo testes de compra, recuperação de timeout, expiração de sessão, perfil e carteiras. O envio de eventos em tempo real por `socket.io-client` e um transporte MSW compatível com Socket.IO ainda não foram implementados; alterações no carrinho são atualizadas pelos refetches disponíveis, sem subscrição `nft.updated`/`order.updated`. Auditoria Lighthouse e deploy público permanecem fora desta implementação.
+No desenvolvimento, `src/main.tsx` inicia o service worker MSW; `VITE_ENABLE_MOCKS=true` habilita o mesmo comportamento em build de demonstração (`.env.demo`, `npm run build:demo`). Build normal não importa chunks do mock. Banco, seed e `resetDb()` estão em `src/mocks/db/`; alterações REST/realtime usam o mesmo estado. O browser persiste a base em `localStorage`; `POST /__mocks/reset` restaura seed/cenário e `seed: "empty"` limpa catálogo. Cenários e exemplos reproduzíveis: [docs/mock-scenarios.md](./docs/mock-scenarios.md).
 
-Também não há conexão com blockchain, extensões de carteira ou gateway de pagamento; os estados e recibos são apenas simulações locais. A implementação não garante um backend compartilhado entre navegadores, pois o estado persistente é local ao browser.
+O client usa `socket.io-client`; `@mswjs/socket.io-binding` adapta conexões Socket.IO/WebSocket para o ambiente MSW. É um servidor de teste local, não substitui um backend Socket.IO: rooms/namespaces, heartbeat e garantias de produção não são implementados. O fluxo depende do estado local do browser e não compartilha banco entre visitantes ou dispositivos.
+
+## Acessibilidade e integração visual
+
+Foram associados labels a controles, acrescentados `aria-invalid`/`aria-describedby`, anúncios `aria-live`/status e foco no primeiro campo inválido. Diálogos mantêm/restauram foco; ações têm foco visível; skeleton respeita `prefers-reduced-motion`. Layouts de conta, carrinho e compra adaptam-se a viewport móvel. E2E inclui navegação por teclado e screenshots desktop/mobile.
+
+O catálogo tem 27 fixtures. Quatro ilustrações PNG locais (`src/assets/nft-monkey-1.png` a `nft-monkey-4.png`) são mantidas como originais e servidas em WebP otimizado de `public/assets/` tanto nas imagens de NFT como no hero. O asset 1 é pré-carregado como imagem principal; dimensões intrínsecas e skeletons reservam espaço durante o carregamento. Os assets presentes não registram uma correspondência verificável com exports individuais do Figma; portanto são substituições ilustrativas locais, não uma declaração de paridade com o original. Hero permanece ilustrativo, não comprável. Conteúdo editorial/promocional ou controles sem suporte por dados/API foram omitidos em vez de simulados como funcionais.
+
+## Revisão de segurança e limitações conhecidas
+
+Não são persistidos passwords em claro; campos usam autocomplete apropriado e são limpos após envio; redirects só aceitam caminhos internos. Upload de avatar valida extensão, MIME e tamanho (1 MB), e não aceita SVG. Conteúdo remoto é renderizado como texto; links externos usam `noopener noreferrer`; handlers autorizam recursos privados. Vercel adiciona `nosniff`, `Referrer-Policy`, `X-Frame-Options` e `Permissions-Policy`. Variáveis `VITE_*` são públicas e não podem guardar segredos. Ver [README.md](./README.md) para o aviso de autenticação apenas demonstrativa.
+
+`npm audit --omit=dev` não reporta vulnerabilidades. A árvore exclusivamente de desenvolvimento reporta 34 avisos (15 HIGH, 19 moderate), incluindo alertas transitivos no Lighthouse 12.8.2 e no glob usado por `shadcn`; Lighthouse 13.5 requer Node 22.19+, acima do runtime mínimo do projeto, então o runner permanece fixado na versão que roda no Node 20 suportado. Esses pacotes não entram no bundle publicado; audite novamente antes de atualizar o toolchain.
+
+Não há blockchain, assinatura/transação real, gateway de pagamento ou backend de produção. Senhas/hash, tokens, sessão, relógio e dados persistentes são somente uma simulação client-side; não use dados reais. O resultado de Lighthouse depende de Chrome, throttling e hardware locais; detalhes e medições reproduzíveis são gravados em [lighthouse/SUMMARY.md](./lighthouse/SUMMARY.md).

@@ -12,7 +12,15 @@ export function NFTCard({ nft }: { nft: NFT }) {
           <div className="rounded-[18px] bg-[#21150f] p-[4px] transition-colors group-hover:bg-[#392317] lg:rounded-none">
           <img
             src={nft.imageUrl}
+            srcSet={nft.imageUrl.startsWith('/assets/nft-monkey-')
+              ? `${nft.imageUrl.replace('.webp', '-640.webp')} 640w, ${nft.imageUrl} 1254w`
+              : undefined}
+            sizes="(max-width: 1023px) 45vw, 30vw"
             alt={nft.name}
+            width={1254}
+            height={1254}
+            loading={nft.id === '1' ? 'eager' : 'lazy'}
+            fetchPriority={nft.id === '1' ? 'high' : 'auto'}
               className="aspect-square w-full rounded-[13px] object-cover transition-transform duration-300 group-hover:scale-[0.985] lg:rounded-[10px]"
           />
           </div>

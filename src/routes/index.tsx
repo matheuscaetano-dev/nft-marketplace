@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { ArrowRight, Search, SlidersHorizontal } from 'lucide-react';
-import heroMonkey from '../assets/nft-monkey-1.png';
 import { useNftList } from '../api/hooks';
 import { NFTCard } from '../components/marketplace/NFTCard';
+
+const heroMonkey = '/assets/nft-monkey-1.webp';
 
 type CatalogSort = 'recent' | 'newest' | 'trending' | 'price-low' | 'price-high';
 
@@ -324,7 +325,25 @@ function CatalogPage() {
           </div>
 
           {isLoading ? (
-            <div className="animate-pulse py-8 text-sm text-[#e89a5e]">Carregando catálogo...</div>
+            <>
+              <p role="status" className="sr-only">Carregando catálogo...</p>
+              <div aria-hidden="true" className="animate-pulse">
+                <div className="grid grid-cols-2 gap-x-4 lg:hidden">
+                  <div className="flex min-w-0 flex-col gap-y-6">
+                    {Array.from({ length: 5 }, (_, index) => <CatalogCardSkeleton key={index} />)}
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-y-6 pt-8">
+                    {Array.from({ length: 4 }, (_, index) => <CatalogCardSkeleton key={index} />)}
+                  </div>
+                </div>
+                <div className="hidden grid-cols-2 gap-x-5 gap-y-8 lg:grid xl:grid-cols-3">
+                  {Array.from({ length: 9 }, (_, index) => <CatalogCardSkeleton key={index} />)}
+                </div>
+                <div className="mt-12 flex justify-end gap-1.5">
+                  {Array.from({ length: 4 }, (_, index) => <div key={index} className="size-8 rounded-[3px] border border-[#503523]" />)}
+                </div>
+              </div>
+            </>
           ) : isError ? (
             <div className="py-8 text-sm text-[#bba181]">
               <p role="alert">Não foi possível carregar os NFTs agora. Tente novamente em instantes.</p>
@@ -373,6 +392,20 @@ function CatalogPage() {
           </nav>}
         </div>
       </section>
+    </div>
+  );
+}
+
+function CatalogCardSkeleton() {
+  return (
+    <div aria-hidden="true">
+      <div className="rounded-[18px] bg-[#21150f] p-[4px] lg:rounded-none">
+        <div className="aspect-square w-full rounded-[13px] bg-[#322017] lg:rounded-[10px]" />
+      </div>
+      <div className="mt-1.5 space-y-1 px-1 lg:mt-2 lg:px-0">
+        <div className="h-4 rounded bg-[#322017]" />
+        <div className="h-4 w-1/3 rounded bg-[#322017]" />
+      </div>
     </div>
   );
 }

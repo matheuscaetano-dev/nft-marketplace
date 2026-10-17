@@ -86,7 +86,9 @@ function NFTDetailsPage() {
         </div>
 
         <div className="px-6">
-          <img src={nft.imageUrl} alt={nft.name} className="aspect-square w-full rounded-[22px] object-cover" />
+          <img src={nft.imageUrl} srcSet={nft.imageUrl.startsWith('/assets/nft-monkey-')
+            ? `${nft.imageUrl.replace('.webp', '-640.webp')} 640w, ${nft.imageUrl} 1254w`
+            : undefined} sizes="(max-width: 1023px) calc(100vw - 48px), 50vw" alt={nft.name} width={1254} height={1254} fetchPriority="high" className="aspect-square w-full rounded-[22px] object-cover" />
         </div>
 
         <div className="relative z-10 -mt-9 flex h-[504px] flex-col justify-between rounded-t-[28px] bg-[#241612] px-6 pb-0 pt-8">
@@ -142,11 +144,11 @@ function NFTDetailsPage() {
         <div className="mt-4 grid gap-8 lg:grid-cols-[470px_minmax(0,1fr)]">
           <div className="grid grid-cols-[64px_minmax(0,1fr)] gap-4 lg:grid-cols-[84px_minmax(0,1fr)]">
             <div className="flex flex-col gap-3">
-              <img src={nft.imageUrl} alt="" className="aspect-square overflow-hidden rounded-[7px] border border-[#D28A4C] bg-[#21150f] p-1 object-cover" />
+              <img src={nft.imageUrl} alt="" width={1254} height={1254} loading="lazy" className="aspect-square overflow-hidden rounded-[7px] border border-[#D28A4C] bg-[#21150f] p-1 object-cover" />
             </div>
 
             <div className="relative aspect-square rounded-[6px] bg-[#21150f] p-4">
-              <img src={nft.imageUrl} alt={nft.name} className="h-full w-full rounded-[20px] object-cover" />
+              <img src={nft.imageUrl} alt={nft.name} width={1254} height={1254} fetchPriority="high" className="h-full w-full rounded-[20px] object-cover" />
             </div>
           </div>
 

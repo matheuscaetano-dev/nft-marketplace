@@ -50,6 +50,6 @@ Para o timeout de pedido: autentique-se, solicite uma cotação em `POST /api/qu
 
 ## Transporte e limitações
 
-As falhas, latências e respostas HTTP são simuladas no interceptor MSW anterior aos handlers REST. O estado de negócio é único e compartilhado pelos handlers em `src/mocks/db`; o browser persiste esse estado em `localStorage` com chave versionada. Os testes MSW Node reinicializam o seed entre casos. O reset `empty` remove NFTs, mas mantém contas e recursos pessoais para possibilitar autenticação durante os testes.
+As falhas, latências e respostas HTTP são simuladas no interceptor MSW antes dos handlers REST. O estado de negócio único é compartilhado por REST e realtime em `src/mocks/db`; no browser persiste em `localStorage` com chave versionada. Os testes MSW Node reinicializam o seed entre casos. O reset `empty` remove NFTs, mas mantém contas e recursos pessoais para autenticação.
 
-Os cenários selecionam e exercitam os handlers REST. O transporte de eventos Socket.IO/MSW será documentado junto à implementação do servidor de eventos; esta camada ainda não afirma compatibilidade Socket.IO.
+O transporte de eventos usa `socket.io-client` e `@mswjs/socket.io-binding` no ambiente de mocks. O servidor mock não implementa toda a infraestrutura Socket.IO (incluindo rooms/namespaces e heartbeat); veja [docs/realtime.md](./realtime.md). Cenários REST e endpoints `/__mocks/realtime` compartilham banco, reset e emissão de eventos, permitindo reproduzir preço/estoque, estado pendente, duplicatas e desconexão.

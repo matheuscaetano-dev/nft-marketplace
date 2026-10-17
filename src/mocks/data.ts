@@ -1,8 +1,9 @@
-import emeraldApe from '../assets/nft-monkey-1.png';
-import goldenBeat from '../assets/nft-monkey-2.png';
-import sageNomad from '../assets/nft-monkey-3.png';
-import ivoryBaron from '../assets/nft-monkey-4.png';
 import type { NFT } from '../types';
+
+const emeraldApe = '/assets/nft-monkey-1.webp';
+const goldenBeat = '/assets/nft-monkey-2.webp';
+const sageNomad = '/assets/nft-monkey-3.webp';
+const ivoryBaron = '/assets/nft-monkey-4.webp';
 
 const featuredNFTs: NFT[] = [
   {

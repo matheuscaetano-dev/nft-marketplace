@@ -1,65 +1,125 @@
 # Kurio NFT Marketplace
 
-Marketplace de NFTs em React, TypeScript, Vite, TanStack Router, TanStack Query, Axios e Tailwind CSS. A API mockada usa MSW, com banco local persistente e cenários configuráveis. Não há conexão com blockchain, carteira ou serviço de pagamento real.
+Marketplace demonstrativo de NFTs construído com React, TypeScript, Vite, TanStack Router/Query, Axios, MSW e Socket.IO. Explore o catálogo, detalhe de NFT, favoritos, carrinho, checkout, pedidos, perfil e carteiras. Os dados e transações são simulados; não há conexão com blockchain, carteira real ou serviço de pagamento.
 
-## Requisitos
+## Pré-requisitos e instalação
 
-- Node.js 20.19+ ou 22.12+
-- npm
-
-## Executar
+- Node.js 20.19+ (ou 22.12+) e npm.
+- Chrome instalado para Lighthouse; use `LIGHTHOUSE_CHROME_PATH` se não estiver no caminho padrão.
+- Chromium Playwright para executar E2E e atualizar screenshots: `npx playwright install chromium`.
 
 ```sh
-npm ci
+git clone <url-do-repositorio>
+cd jungle-nft-marketplace
+npm install
 npm run dev
 ```
 
-O servidor de mocks inicia automaticamente no desenvolvimento. Abra a URL exibida pelo Vite. Use `npm run test:unit` para os testes Vitest da camada MSW e `npm run typecheck` para a verificação de tipos.
+O Vite inicia MSW automaticamente em desenvolvimento. Para configuração local opcional, copie `.env.example` para `.env.local` (PowerShell: `Copy-Item .env.example .env.local`). Nunca coloque segredos em variáveis `VITE_*`: são públicas no bundle do navegador.
 
-Copie `.env.example` para `.env.local` quando precisar configurar variáveis locais. Variáveis `VITE_*` são incluídas no bundle do navegador e nunca devem conter segredos.
+## Variáveis de ambiente
 
-| Variável | Uso |
-| --- | --- |
-| `VITE_ENABLE_MOCKS` | Ativa MSW nos builds de demonstração; normalmente `false` |
-| `VITE_MOCK_SCENARIO` | Cenário padrão opcional dos mocks |
-| `VITE_API_BASE_URL` | URL base opcional de uma API compatível; padrão `/api` |
+| Arquivo/variável | Valor/exemplo | Uso |
+| --- | --- | --- |
+| `.env.example` | referência versionada, sem segredos | Modelo para `.env.local`. |
+| `.env.demo` | `VITE_ENABLE_MOCKS=true` | Ativa os mocks no `build:demo` e no Lighthouse local. |
+| `VITE_ENABLE_MOCKS` | `true` ou `false` | Ativa MSW em builds; no Vite dev, os mocks já iniciam. |
+| `VITE_MOCK_SCENARIO` | nome de cenário, por exemplo `slow` | Seleciona o cenário padrão em runtime. Sem valor, usa `success`. |
+| `VITE_API_BASE_URL` | URL compatível ou vazio | Prefixo REST; o padrão é `/api`. |
+| `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` | caminho para Chrome/Chromium | Opcional: navegador alternativo do Playwright. |
+| `LIGHTHOUSE_CHROME_PATH` / `CHROME_PATH` | caminho para Chrome | Opcional: navegador do Lighthouse. |
+| `LIGHTHOUSE_PUBLIC_URL` | URL HTTPS publicada | Executa a rodada pública Lighthouse; não modifica o deploy. |
 
-**Aviso de segurança:** autenticação, sessões, carteiras, pedidos e pagamentos deste projeto são simulações client-side para demonstração. O token e o banco mockado são armazenados no navegador; não oferecem autenticação segura nem devem ser usados com dados, credenciais ou transações reais.
+## Contas fictícias e mocks
+
+| Usuário | E-mail | Senha |
+| --- | --- | --- |
+| Ada Colecionadora | `ada@kurio.test` | `AdaDemo123!` |
+| Bruno Artista | `bruno@kurio.test` | `BrunoDemo123!` |
+
+O banco MSW compartilhado entre handlers REST e Socket.IO contém catálogo determinístico, contas, sessões, favoritos, carrinhos, cotações e pedidos. No browser, o estado persiste em `localStorage`. Desenvolvimento ativa mocks automaticamente; `npm run build:demo` usa `.env.demo`. Builds de produção normais mantêm mocks desativados.
+
+Para escolher cenários:
+
+- No build/dev: `VITE_MOCK_SCENARIO=slow`.
+- Em uma chamada específica: acrescente `?scenario=slow` à URL do endpoint REST.
+- Em teste/código: `setMockScenario('http-5xx', '/api/nfts')`.
+- Resetar banco e cenário: `POST /__mocks/reset` com `{"scenario":"success"}`; `{"seed":"empty"}` seleciona catálogo vazio. O reset apaga também o estado local persistido no contexto de mocks.
+- Alterar cenário de uma rota sem resetar banco: `POST /__mocks/scenario` com `{"scenario":"session-expired","endpoint":"/api/quotes"}`.
+- Alterar listagem ou resolver pedido pendente e observar atualizações: endpoints `PATCH /__mocks/realtime/...`, descritos em [docs/realtime.md](./docs/realtime.md).
+
+Para reproduzir os fluxos de falha (selecione o cenário e endpoint da tabela em [docs/mock-scenarios.md](./docs/mock-scenarios.md)):
+
+- `slow`, `variable-latency`, `network-error`, `http-4xx`, `http-5xx`, `unauthorized` e `session-expired`: aplique a rota REST que deseja exercitar.
+- `signup-conflict`, `validation-error`, `coupon-invalid` e `coupon-expired`: envie a operação de cadastro, perfil/carteira ou cotação correspondente.
+- `price-changed`, `sold-out`, `order-timeout-after-create`, `order-pending`, `payment-confirmed` e `payment-rejected`: autentique-se e execute o checkout; o timeout recupera o pedido usando a mesma `Idempotency-Key`.
+- Para alteração de anúncio, recusa/confirmação de pedido pendente, evento duplicado/antigo e conexão interrompida, use os endpoints determinísticos `/__mocks/realtime/...` e os passos detalhados em [docs/realtime.md](./docs/realtime.md).
 
 ## Comandos
 
 | Comando | Descrição |
 | --- | --- |
-| `npm run dev` | Desenvolvimento com MSW no navegador |
-| `npm run build` | Verificação TypeScript e build normal |
-| `npm run build:demo` | Build de demonstração com MSW habilitado |
-| `npm run preview` | Preview do build gerado |
-| `npm run lint` | ESLint |
-| `npm run typecheck` | Verificação TypeScript |
-| `npm run test:unit` | Testes unitários e integração MSW Node |
-| `npm run test:e2e` | Testes E2E Playwright em Chromium |
-| `npm run test:e2e:report` | Abre o último relatório HTML Playwright |
+| `npm run dev` | Desenvolvimento com MSW ativo. |
+| `npm run build` | Verifica TypeScript e gera build normal sem ativar mocks. |
+| `npm run build:demo` | Build otimizado de demonstração com MSW ativo. |
+| `npm run preview` | Serve `dist/` localmente; rode antes `build` ou `build:demo`. |
+| `npm run typecheck` | Verificação TypeScript. |
+| `npm run lint` | ESLint. |
+| `npm run test:unit` | Vitest e integração com MSW Node. |
+| `npm run test:e2e` | Playwright em Chromium (desktop e mobile); relatório HTML e traces em falhas. |
+| `npx playwright test tests/visual.spec.ts --update-snapshots` | Atualiza baselines desktop/mobile versionadas. |
+| `npm run test:e2e:report` | Abre o último relatório HTML do Playwright. |
+| `npx playwright show-trace test-results/<execução>/trace.zip` | Inspeciona trace de uma falha. |
+| `npm run lighthouse` | Cria build demo, inicia `vite preview`, realiza 3 auditorias por página/perfil e salva HTML, JSON e medianas em `lighthouse/`. |
 
-Para executar os testes pela primeira vez, instale o navegador: `npx playwright install chromium`. Se já houver Chrome instalado, `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` pode apontar para o executável local. O Playwright inicia o Vite automaticamente e grava traces de falhas em `test-results/`.
+## Lighthouse
 
-## Mocks e dados
+O runner gera 12 auditorias locais (início e `/nft/1`, mobile e desktop, 3 repetições), com perfil Chrome novo/sem cache em cada execução, no build demo com mocks e cenário padrão ativos. Configuração fixa de viewport e throttling em [`lighthouse/config/`](./lighthouse/config/); resultados e versão de browser/ambiente em [`lighthouse/SUMMARY.md`](./lighthouse/SUMMARY.md), relatórios individuais em `lighthouse/reports/`. Para repetir também as 12 medições contra o deploy (somente leitura), defina `LIGHTHOUSE_PUBLIC_URL` antes de executar; PowerShell: `$env:LIGHTHOUSE_PUBLIC_URL='https://nft-marketplace-eight-mu.vercel.app/'; npm run lighthouse`.
 
-O catálogo contém 27 itens determinísticos. O banco MSW também inclui dois usuários de demonstração, sessões, favoritos, carrinhos, cupons, carteiras e pedidos; seus dados são persistidos em `localStorage` com a chave `kurio-marketplace-mock-db-v1`. O comando `npm run build:demo` carrega `.env.demo`, que define `VITE_ENABLE_MOCKS=true`, mantendo os mocks no build demo. Builds normais não ativam os mocks.
+## Testes visuais
 
-`GET /api/nfts` aceita `q`, `collection`, `network`, `minPrice`, `maxPrice`, `sort`, `page` e `limit`. Os preços dos limites são expressos em centésimos de ETH (por exemplo, `minPrice=125` representa `1.25 ETH`). A resposta usa `{ data, total, page, limit }`. `sort` aceita `recent`, `newest`, `trending`, `price-low` e `price-high`. `GET /api/nfts/:id` devolve um NFT ou HTTP 404.
+Baselines versionadas em `tests/visual.spec.ts-snapshots/` foram capturadas no Windows (ambiente atual). Mudanças de OS, navegador ou fonte podem exigir baselines próprias; regenere no ambiente desejado com `npx playwright test tests/visual.spec.ts --update-snapshots` e inspecione o diff antes de versionar.
 
-Os estados de busca e filtros ficam nos search params do TanStack Router; os parâmetros completos compõem a query key do TanStack Query e são enviados ao endpoint por Axios. A query recebe o `AbortSignal` do TanStack Query para descartar/cancelar requisições obsoletas.
+## Deploy e demonstração pública
 
-### Cenários
+O deploy Vercel usa o rewrite SPA definido em `vercel.json`. Para a demo, execute `npm run build:demo` e publique a pasta `dist`; esse build mantém MSW ativo e não representa autenticação ou transação reais. Builds comuns com `npm run build` não habilitam mocks.
 
-`VITE_MOCK_SCENARIO` seleciona um cenário padrão, ou use `?scenario=slow` em uma requisição específica ou `setMockScenario(name, endpoint?)` em testes. `POST /__mocks/reset` com `{ "scenario": "success" }` reinicia dados e seleção. Cenários existentes incluem lentidão, respostas fora de ordem, erro de rede/HTTP, sessão expirada, conflito/validação de cadastro, cupom inválido/expirado, preço alterado, esgotamento, timeout recuperável por idempotência e pagamento recusado. Consulte [docs/mock-scenarios.md](./docs/mock-scenarios.md) para reproduzir cada um e para credenciais fictícias.
+URL pública: https://nft-marketplace-eight-mu.vercel.app/
 
-Os contratos e métodos HTTP estão documentados em [docs/api-contracts.md](./docs/api-contracts.md). A aritmética de ETH usa `decimal.js` com precisão interna de 80 dígitos, arredondamento half-up e exibição configurável; valores de transporte continuam strings decimais.
+**Aviso de segurança:** autenticação, sessão, carteiras, pedidos e pagamentos são simulações client-side. Tokens e banco mockado usam armazenamento local do navegador; não constituem autenticação segura e nunca devem receber credenciais, dados pessoais ou transações reais.
 
-O cliente REST usa a instância única Axios exportada por `src/api/client.ts`; `VITE_API_BASE_URL` pode substituir `/api` para um backend compatível. A camada `src/api/hooks.ts` fornece consultas e mutations TanStack Query; a política de frescor, isolamento por usuário e retries está em [docs/cache-policy.md](./docs/cache-policy.md). A sessão é restaurada por `GET /api/auth/session`; tokens ficam em armazenamento local para sobreviver ao refresh, e senhas não são persistidas.
+## Contratos e arquitetura
 
-## Estado da entrega
+Contratos REST e de eventos: [docs/api-contracts.md](./docs/api-contracts.md). Cenários: [docs/mock-scenarios.md](./docs/mock-scenarios.md). Política de cache: [docs/cache-policy.md](./docs/cache-policy.md). Transporte realtime: [docs/realtime.md](./docs/realtime.md). Visão das responsabilidades, decisões e limitações: [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-O catálogo, as contas, carrinho, checkout, pedidos, perfil e carteiras estão integrados aos hooks REST/MSW. Eventos Socket.IO são mockados para desenvolvimento/demonstração; fluxos E2E desktop/mobile e baselines visuais são executados por Playwright. Não há conexão com blockchain, carteira ou serviço de pagamento real.
+## Limitações conhecidas
 
-Veja [ARCHITECTURE.md](./ARCHITECTURE.md) para responsabilidades, contrato implementado e limitações atuais.
+**Fidelidade visual.** O front-end segue o Figma na estrutura, nos fluxos e na identidade
+visual, mas **não é uma reprodução pixel a pixel**. Alguns ajustes de front-end e,
+principalmente, a versão mobile ficaram sem o refinamento necessário para acompanhar o
+Figma com total fidelidade. Busquei seguir o layout da melhor forma possível dentro do
+prazo, priorizando o comportamento (fluxos completos, API simulada, tempo real) e a
+acessibilidade.
+
+Diferenças conhecidas:
+
+- **Mobile e tablet:** os frames mobile foram seguidos onde existiam, mas com menos
+  refinamento que o desktop.
+- **Login e cadastro:** receberam validação, mensagens de erro associadas aos campos,
+  estado de carregamento e prevenção de envio duplicado, o que causou
+  diferenças em relação ao frame original do figma.
+- **Espaçamentos e tipografia:** há pequenas diferenças de espaçamento, alinhamento e
+  tamanho de fonte em algumas telas.
+- **Estados não desenhados** (skeleton, vazio, erro, validação, avisos de tempo real)
+  seguem o padrão visual existente, sem referência no Figma.
+- **Conteúdo fora do escopo** (áreas promocionais/editoriais e avaliações sem dados) foi
+  removido.
+
+**Testes e possíveis erros.** Podem existir falhas não detectadas, principalmente em
+combinações de fluxos, viewports intermediários e cenários de falha não cobertos. Os testes
+automatizados (unitários, E2E e regressão visual) cobrem os fluxos principais, mas **mais
+testes são necessários**, especialmente na versão mobile e em casos de borda de tempo real
+e checkout.
+
+Os desvios do Figma e os ajustes de acessibilidade estão detalhados em
+[ARCHITECTURE.md](./ARCHITECTURE.md).
